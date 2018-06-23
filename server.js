@@ -8,45 +8,62 @@ const mongoose = require('mongoose');
 const ObjectId = mongoose.Types.ObjectId;
 const { userSchema } = require('./src/graphql/user/userSchema.js');
 
+const bcrypt = require('bcrypt');
+var session = require('express-session');
+const uuidv1 = require('uuid/v1');
+var cors = require('cors');
+
 mongoose.connect('mongodb://Opus:tJ26JuV82uvW@ds016108.mlab.com:16108/opus');
 
 // Create an express server and a GraphQL endpoint
 var app = express();
 
-
-//Récupération de l'utilisateur actif.
-const getUser = (authorization, secret) => {
-    const bearerLength = "Bearer ".length;
-    if (authorization && authorization.length > bearerLength) {
-        const token = authorization.slice(bearerLength);
-        return jwt.verify(token, secret, (err, result) => {
-            if (err) {
-                return null;
-            } else {
-                var userModel = mongoose.model('Users', userSchema, "users");
-                return userModel.findOne({ _id: new ObjectId(result._id) })
-                .then(user => {
-                    return user;
-                });
-            }
-        })
-    }
-    
-    return null;
+/*var corsOptions = {
+    origin: 'http://http://localhost:3000/',
+    credentials: true // <-- REQUIRED backend setting
 };
 
-app.use('/graphql', bodyParser.json(), graphqlExpress( req => {
-        const secret = "5u1wNqoNkcMDgP3MgGN00aejtm3045lO";
-        const user = getUser(req.headers['authorization'], secret);
+app.use(cors(corsOptions));*/
 
-        console.log(user);
+var sess = {
+    secret: 'keyboard cat',
+    cookie: {}
+}
+  
+if (app.get('env') === 'production') {
+    app.set('trust proxy', 1) // trust first proxy
+    sess.cookie.secure = true // serve secure cookies
+}
+  
+app.use(session(sess))
+
+/*app.set('trust proxy', 1)
+app.use(
+    session({
+        genid: function(req) {
+            return uuidv1()
+        },
+        name: "qid",
+        secret: "dfsdfsdfsdf",
+        resave: false,
+        saveUninitialized: false,
+        cookie: {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            maxAge: 1000 * 60 * 60 * 24 * 7
+        }
+    })
+)*/
+
+//Graphql API
+app.use('/graphql', 
+    bodyParser.json(), 
+    graphqlExpress( req => {
+        console.log(req.session);
 
         return {
             schema: executableSchema,
-            context: {
-                secret: secret,
-                user: user
-            }
+            context: req
         };
     })
 );

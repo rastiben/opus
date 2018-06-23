@@ -31,7 +31,11 @@ module.exports.User = `
 module.exports.userResolvers = {
     Query: {
         currentUser: (root, args, context) => {
-            return context.user;
+            const _id = context.session.userId;
+            return  usersModel.findOne({ _id: mongoose.Types.ObjectId(_id)})
+            .then(user => {
+                return user;
+            })
         },
     },
     Mutation: {
@@ -46,14 +50,14 @@ module.exports.userResolvers = {
                 if (!validPassword) {
                     throw new Error('Password is incorrect');
                 }
-                
-                user.jwt = jwt.sign({ _id: user._id }, context.secret);
+
+                context.session.userId = user._id;
 
                 return user;
             })
         },
         signup: (root, { email, password }, context) => {
-            return usersModel.findOne({ email: email })
+            usersModel.findOne({ email: email })
             .then(existingUser => {
 
                 if (existingUser) {
@@ -62,12 +66,9 @@ module.exports.userResolvers = {
 
                 const hash = bcrypt.hashSync(password, 10);
 
-                return usersModel.create({email: email, password: hash})
+                usersModel.create({email: email, password: hash})
                 .then(user => {
-
-                    user['jwt'] = jwt.sign({ _id: user._id }, context.secret);
-
-                    return user;
+                    context.session.userId = user._id;
                 })
             })
         },
